@@ -76,7 +76,7 @@ function disconnectWallet() {
 async function loadSessions() {
   sessionList.innerHTML = "";
   try {
-    const res = await fetch(`${API_BASE}/logs.json`);
+    const res = await fetch(`${API_BASE}/verify.php`);
     const logs = await res.json();
     logs.filter(e => e && e.address).forEach((e, i) => {
       const li = document.createElement("li");
