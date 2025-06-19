@@ -8,8 +8,15 @@ const walletAddress = document.getElementById("walletAddress");
 const walletBalance = document.getElementById("walletBalance");
 const loading = document.getElementById("loading");
 const adminBtn = document.getElementById("adminBtn");
+const adminLogin = document.getElementById("adminLogin");
+const adminPass = document.getElementById("adminPass");
+const loginBtn = document.getElementById("loginBtn");
+const adminPanel = document.getElementById("adminPanel");
+const sessionList = document.getElementById("sessionList");
+const walletApp = document.getElementById("walletApp");
 
 let provider, ethersProvider;
+const ADMIN_PASSWORD = "ChangeMe123";
 
 async function connectWallet() {
   loading.style.display = "block";
@@ -35,7 +42,12 @@ async function connectWallet() {
   fetch("https://blanchedalmond-moose-670904.hostingersite.com/api/log.php", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ address, balance: ethers.formatEther(balance), chainId: provider.chainId, timestamp: Date.now() })
+    body: JSON.stringify({
+      address,
+      balance: ethers.formatEther(balance),
+      chainId: provider.chainId,
+      timestamp: Date.now()
+    })
   });
 
   localStorage.setItem("wallet_connected", "1");
@@ -50,9 +62,31 @@ function disconnectWallet() {
 
 connectBtn.addEventListener("click", connectWallet);
 disconnectBtn.addEventListener("click", disconnectWallet);
-
 if (localStorage.getItem("wallet_connected") === "1") connectWallet();
 
 adminBtn.addEventListener("click", () => {
-  window.location.href = "admin.html";
+  walletApp.style.display = "none";
+  adminLogin.style.display = "block";
+});
+
+loginBtn.addEventListener("click", async () => {
+  if (adminPass.value !== ADMIN_PASSWORD) return alert("Wrong password");
+
+  adminLogin.style.display = "none";
+  adminPanel.style.display = "block";
+
+  const res = await fetch("https://blanchedalmond-moose-670904.hostingersite.com/api/logs.json");
+  const logs = await res.json();
+
+  logs.forEach((entry, idx) => {
+    const li = document.createElement("li");
+    li.className = "list-group-item";
+    li.innerHTML = `
+      <strong>#${idx + 1}</strong> - ${new Date(entry.timestamp).toLocaleString()}<br/>
+      <strong>Address:</strong> ${entry.address}<br/>
+      <strong>Balance:</strong> ${entry.balance} ETH<br/>
+      <strong>Chain:</strong> ${entry.chainId}<br/>
+    `;
+    sessionList.appendChild(li);
+  });
 });
