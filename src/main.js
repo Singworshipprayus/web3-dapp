@@ -3,6 +3,7 @@ import EthereumProvider from "@walletconnect/ethereum-provider";
 
 const API_BASE = "https://blanchedalmond-moose-670904.hostingersite.com/api";
 const ADMIN_PASSWORD = "ChangeMe123";
+
 let provider, ethersProvider;
 
 const connectBtn = document.getElementById("connectBtn");
@@ -22,21 +23,32 @@ const sessionList = document.getElementById("sessionList");
 async function connectWallet() {
   loading.style.display = "block";
   connectBtn.disabled = true;
-  provider = await EthereumProvider.init({ projectId: "84e8498a4e08cafe1acaf08369fd7a56", chains: [1,56,137], showQrModal: true });
+
+  provider = await EthereumProvider.init({
+    projectId: "84e8498a4e08cafe1acaf08369fd7a56",
+    chains: [1, 56, 137],
+    showQrModal: true
+  });
+
   await provider.enable();
+
   ethersProvider = new ethers.BrowserProvider(provider);
   const signer = await ethersProvider.getSigner();
   const address = await signer.getAddress();
   const balance = await ethersProvider.getBalance(address);
+
   walletAddress.textContent = address;
   walletBalance.textContent = ethers.formatEther(balance);
   walletDetails.style.display = "block";
   loading.style.display = "none";
   localStorage.setItem("wallet_connected", "1");
+
   try {
-    const postRes = await fetch(`${API_BASE}/log.php`, {
+    const response = await fetch(`${API_BASE}/log.php`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json"
+      },
       body: JSON.stringify({
         address: address,
         balance: ethers.formatEther(balance),
@@ -44,12 +56,13 @@ async function connectWallet() {
         timestamp: Date.now()
       })
     });
-    const result = await postRes.json();
-    if (!postRes.ok || result.status !== "ok") {
-      alert("Failed to log wallet connection");
+
+    const result = await response.json();
+    if (!response.ok || result.status !== "ok") {
+      alert("Log error: " + JSON.stringify(result));
     }
   } catch (e) {
-    alert("Logging error: " + e.message);
+    alert("Logging failed: " + e.message);
   }
 }
 
@@ -68,7 +81,7 @@ async function loadSessions() {
     logs.filter(e => e && e.address).forEach((e, i) => {
       const li = document.createElement("li");
       li.className = "list-group-item";
-      li.innerHTML = `<strong>#${i+1}</strong> - ${new Date(e.timestamp).toLocaleString()}<br/>
+      li.innerHTML = `<strong>#${i + 1}</strong> - ${new Date(e.timestamp).toLocaleString()}<br/>
         <strong>Address:</strong> ${e.address}<br/>
         <strong>Balance:</strong> ${e.balance} ETH<br/>
         <strong>Chain:</strong> ${e.chainId}<br/>`;
@@ -84,18 +97,30 @@ function handleRoute() {
   walletApp.style.display = "none";
   adminLogin.style.display = "none";
   adminPanel.style.display = "none";
-  if (h === "#admin") { adminPanel.style.display = "block"; loadSessions(); }
-  else if (h === "#login") adminLogin.style.display = "block";
-  else walletApp.style.display = "block";
+  if (h === "#admin") {
+    adminPanel.style.display = "block";
+    loadSessions();
+  } else if (h === "#login") {
+    adminLogin.style.display = "block";
+  } else {
+    walletApp.style.display = "block";
+  }
 }
 
 connectBtn.addEventListener("click", connectWallet);
 disconnectBtn.addEventListener("click", disconnectWallet);
 adminBtn.addEventListener("click", () => location.hash = "#login");
 loginBtn.addEventListener("click", () => {
-  if (adminPass.value === ADMIN_PASSWORD) location.hash = "#admin";
-  else alert("Wrong password");
+  if (adminPass.value === ADMIN_PASSWORD) {
+    location.hash = "#admin";
+  } else {
+    alert("Wrong password");
+  }
 });
-if (localStorage.getItem("wallet_connected") === "1") connectWallet();
+
+if (localStorage.getItem("wallet_connected") === "1") {
+  connectWallet();
+}
+
 window.addEventListener("hashchange", handleRoute);
 window.addEventListener("load", handleRoute);
