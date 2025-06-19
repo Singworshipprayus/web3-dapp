@@ -95,7 +95,7 @@ if (localStorage.getItem("wallet_connected") === "1") connectWallet();
 async function loadSessions() {
   sessionList.innerHTML = "";
   try {
-    const res = await fetch(`${API_BASE}/get_logs.php`);
+    const res = await fetch(`${API_BASE}/verify.php`);
     const logs = await res.json();
 
     logs.filter(e => e && e.address).forEach((e, i) => {
