@@ -54,5 +54,5 @@ disconnectBtn.addEventListener("click", disconnectWallet);
 if (localStorage.getItem("wallet_connected") === "1") connectWallet();
 
 adminBtn.addEventListener("click", () => {
-  window.location.href = "/admin.html";
+  window.location.href = "admin.html";
 });
