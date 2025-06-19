@@ -35,17 +35,20 @@ async function connectWallet() {
   walletBalance.textContent = ethers.formatEther(balance);
   walletDetails.style.display = "block";
   loading.style.display = "none";
-  fetch("https://blanchedalmond-moose-670904.hostingersite.com/api/log.php", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      address,
-      balance: ethers.formatEther(balance),
-      chainId: provider.chainId,
-      timestamp: Date.now()
-    })
-  });
   localStorage.setItem("wallet_connected", "1");
+
+  setTimeout(() => {
+    fetch("https://blanchedalmond-moose-670904.hostingersite.com/api/log.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        address,
+        balance: ethers.formatEther(balance),
+        chainId: provider.chainId,
+        timestamp: Date.now()
+      })
+    });
+  }, 300);
 }
 
 function disconnectWallet() {
