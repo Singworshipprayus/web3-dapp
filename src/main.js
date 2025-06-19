@@ -34,13 +34,23 @@ async function connectWallet() {
   loading.style.display = "none";
   localStorage.setItem("wallet_connected", "1");
   try {
-    const res = await fetch(`${API_BASE}/log.php`, {
+    const postRes = await fetch(`${API_BASE}/log.php`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ address, balance: ethers.formatEther(balance), chainId: provider.chainId, timestamp: Date.now() })
+      body: JSON.stringify({
+        address: address,
+        balance: ethers.formatEther(balance),
+        chainId: provider.chainId,
+        timestamp: Date.now()
+      })
     });
-    await res.json();
-  } catch(e){}
+    const result = await postRes.json();
+    if (!postRes.ok || result.status !== "ok") {
+      alert("Failed to log wallet connection");
+    }
+  } catch (e) {
+    alert("Logging error: " + e.message);
+  }
 }
 
 function disconnectWallet() {
@@ -55,7 +65,7 @@ async function loadSessions() {
   try {
     const res = await fetch(`${API_BASE}/logs.json`);
     const logs = await res.json();
-    logs.filter(e=>e&&e.address).forEach((e,i)=>{
+    logs.filter(e => e && e.address).forEach((e, i) => {
       const li = document.createElement("li");
       li.className = "list-group-item";
       li.innerHTML = `<strong>#${i+1}</strong> - ${new Date(e.timestamp).toLocaleString()}<br/>
@@ -64,7 +74,9 @@ async function loadSessions() {
         <strong>Chain:</strong> ${e.chainId}<br/>`;
       sessionList.appendChild(li);
     });
-  } catch(e){}
+  } catch (e) {
+    sessionList.innerHTML = "<li class='list-group-item text-danger'>Failed to load sessions</li>";
+  }
 }
 
 function handleRoute() {
@@ -79,8 +91,11 @@ function handleRoute() {
 
 connectBtn.addEventListener("click", connectWallet);
 disconnectBtn.addEventListener("click", disconnectWallet);
-adminBtn.addEventListener("click", ()=>location.hash="#login");
-loginBtn.addEventListener("click", ()=>{ if(adminPass.value===ADMIN_PASSWORD) location.hash="#admin"; else alert("Wrong password");});
-if(localStorage.getItem("wallet_connected")==="1") connectWallet();
+adminBtn.addEventListener("click", () => location.hash = "#login");
+loginBtn.addEventListener("click", () => {
+  if (adminPass.value === ADMIN_PASSWORD) location.hash = "#admin";
+  else alert("Wrong password");
+});
+if (localStorage.getItem("wallet_connected") === "1") connectWallet();
 window.addEventListener("hashchange", handleRoute);
 window.addEventListener("load", handleRoute);
