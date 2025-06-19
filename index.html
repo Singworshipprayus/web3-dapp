@@ -34,12 +34,16 @@
     </div>
     <div class="text-center">
       <button id="loginBtn" class="btn btn-dark">Login</button>
+      <button onclick="location.hash = '#wallet'" class="btn btn-outline-secondary mt-2">Back</button>
     </div>
   </div>
 
   <div class="container mt-5" id="adminPanel">
     <h3>👤 Connected Sessions</h3>
     <ul id="sessionList" class="list-group"></ul>
+    <div class="text-center mt-3">
+      <button onclick="location.hash = '#wallet'" class="btn btn-outline-secondary">Back</button>
+    </div>
   </div>
 
   <script type="module" src="/src/main.js"></script>
