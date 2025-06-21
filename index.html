@@ -16,7 +16,7 @@
     }
     .admin-btn:hover { opacity: 1; }
     .section { display: none; }
-    .wallet-info { word-break: break-all; }
+    .wallet-info { word-break: break-word; }
   </style>
 </head>
 <body>
@@ -50,6 +50,13 @@
       <button class="btn btn-secondary" onclick="location.hash = '#'">← Back to Wallet</button>
     </div>
   </div>
+
+  <!-- Initial UI logic to show walletApp -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("walletApp").style.display = "block";
+    });
+  </script>
 
   <script type="module" src="./src/main.js"></script>
 </body>
